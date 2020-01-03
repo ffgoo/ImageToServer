@@ -5,6 +5,7 @@ package com.jinasoft.imagetoserver;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -16,6 +17,9 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.ExifInterface;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
@@ -28,12 +32,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity{
+public class MainActivity extends Activity {
 
-
+    private String imagePath;
     private ImageView imgView;
     private String filePath;
     private static final int PICK_PHOTO = 1958;
+    private final int GALLERY_CODE = 1112;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -46,29 +51,42 @@ public class MainActivity extends Activity{
     String filename = sdfNOW.format(date);
 
     TextView messageText;
-    Button uploadButton;
+    Button uploadButton, selectButton;
     int serverResponseCode = 0;
     ProgressDialog dialog = null;
 
     String upLoadServerUri = null;
 
     /**********  File Path *************/
-    final String uploadFilePath = "storage/emulated/0/DCIM/Camera/";//경로를 모르겠으면, 갤러리 어플리케이션 가서 메뉴->상세 정보
+    final String uploadFilePath = "content://media/external/images/media/5891/";//경로를 모르겠으면, 갤러리 어플리케이션 가서 메뉴->상세 정보
     final String uploadFileName = "loading.png"; //전송하고자하는 파일 이름
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        uploadButton = (Button)findViewById(R.id.uploadButton);
-        messageText  = (TextView)findViewById(R.id.messageText);
-        imgView= findViewById(R.id.imageView);
+        uploadButton = (Button) findViewById(R.id.uploadButton);
+        selectButton = (Button) findViewById(R.id.selectButton);
+        messageText = (TextView) findViewById(R.id.messageText);
+        imgView = findViewById(R.id.imageView);
 
-        messageText.setText(uploadFileName+"'");
+        messageText.setText(uploadFileName + "'");
 
         /************* Php script path ****************/
         upLoadServerUri = "http://58.230.203.182/Landpage/UploadToServer.php ";//서버컴퓨터의 ip주소
 
+        selectButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_PICK);
+                intent.setData(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                intent.setType("image/*");
+                startActivityForResult(intent, GALLERY_CODE);
+
+
+            }
+        });
         uploadButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -84,12 +102,8 @@ public class MainActivity extends Activity{
                         });
 
 
-
                         //여기서 전송
                         uploadFile(uploadFilePath + "" + uploadFileName);
-
-
-
 
 
                     }
@@ -97,6 +111,7 @@ public class MainActivity extends Activity{
             }
         });
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -106,7 +121,44 @@ public class MainActivity extends Activity{
             imgView.setImageURI(imageUri);
             uploadButton.setVisibility(View.VISIBLE);
         }
+        if (resultCode == RESULT_OK) {
+            switch (requestCode) {
+                case GALLERY_CODE:
+                    sendPicture(data.getData()); //갤러리에서 가져오기
+                    break;
+//                    case CAMERA_CODE:
+//                        getPictureForPhoto(); //카메라에서 가져오기
+//                        break;
+                default:
+                    break;
+            }
+        }
     }
+
+
+        private void sendPicture(Uri imgUri) {
+           String imagePath = getRealPathFromURI(imgUri); // path 경로
+             ExifInterface exif = null;
+             try {
+                 exif = new ExifInterface(imagePath);
+             } catch (IOException e) {
+                 e.printStackTrace();
+             }
+
+
+        }
+
+    private String getRealPathFromURI(Uri contentUri) {
+        int column_index=0;
+        String[] proj = {MediaStore.Images.Media.DATA};
+        Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
+        if(cursor.moveToFirst()){
+            column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        }
+        return cursor.getString(column_index);
+    }
+
+
     private String getPath(Uri uri) {
         String[] projection = { MediaStore.Images.Media.DATA };
         Cursor cursor = managedQuery(uri, projection, null, null, null);

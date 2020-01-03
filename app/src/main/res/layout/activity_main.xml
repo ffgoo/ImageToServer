@@ -10,6 +10,12 @@
         android:text="Click To Upload File"
         android:id="@+id/uploadButton"
         />
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="Click To Select File"
+        android:id="@+id/selectButton"
+        />
 
     <TextView
         android:layout_width="fill_parent"
